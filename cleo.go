@@ -13,8 +13,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
- 
-// Package cleo provides a fast search algorithm for prefix matching large amounts of text. 
+
+// Package cleo provides a fast search algorithm for prefix matching large amounts of text.
 package cleo
 
 import (
@@ -22,9 +22,9 @@ import (
 	"encoding/json"
 	_ "expvar"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 )
@@ -60,7 +60,7 @@ func init() {
 	http.HandleFunc("/cleo", searchHandler)
 }
 
-func BuildIndexes(corpusPath string, scoringFunction fn_score) {
+func BuildIndexes(corpus bufio.Reader, scoringFunction fn_score) {
 	m = &indexContainer{}
 	m.iIndex = NewInvertedIndex()
 	m.fIndex = NewForwardIndex()
@@ -70,7 +70,7 @@ func BuildIndexes(corpusPath string, scoringFunction fn_score) {
 		chosenScoringFunction = Score
 	}
 
-	InitIndex(m.iIndex, m.fIndex, corpusPath)
+	InitIndex(m.iIndex, m.fIndex, corpus)
 }
 
 //Search handles the web requests and writes the output as
@@ -84,19 +84,12 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(myJson))
 }
 
-func InitIndex(iIndex *InvertedIndex, fIndex *ForwardIndex, corpusPath string) {
+func InitIndex(iIndex *InvertedIndex, fIndex *ForwardIndex, corpus bufio.Reader) {
 	//Read corpus
-	file, err := os.Open(corpusPath)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	r := bufio.NewReader(file)
 	docID := 1
 
 	for {
-		line, err := r.ReadString('\n')
+		line, err := corpus.ReadString('\n')
 		if err != nil {
 			break
 		}
